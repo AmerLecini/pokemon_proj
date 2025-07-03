@@ -20,7 +20,7 @@ interface PokemonContextProps {
 }
 
 const PokemonContext = createContext<PokemonContextProps | undefined>(
-  undefined
+  undefined,
 );
 
 export const PokemonProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -29,27 +29,36 @@ export const PokemonProvider: React.FC<{ children: React.ReactNode }> = ({
   const [pokemonList, setPokemonList] = useState<Pokemon[]>([]);
   const [filteredPokemon, setFilteredPokemon] = useState<Pokemon[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [team, setTeam] = useState<Pokemon[]>([]);
+
+  const [team, setTeam] = useState<Pokemon[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTeam = localStorage.getItem('pokemonTeam');
+      return storedTeam ? JSON.parse(storedTeam) : [];
+    }
+    return [];
+  });
 
   const addToTeam = (pokemon: Pokemon) => {
-   
-
     if (!team.find((p) => p.name === pokemon.name)) {
-      setTeam([...team, pokemon]);
-      
+      setTeam((prevTeam) => [...prevTeam, pokemon]);
     }
   };
 
   const removeFromTeam = (pokemonName: string) => {
-   
-    setTeam(team.filter((p) => p.name !== pokemonName));
+    setTeam((prevTeam) => prevTeam.filter((p) => p.name !== pokemonName));
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pokemonTeam', JSON.stringify(team));
+    }
+  }, [team]);
 
   useEffect(() => {
     const fetchPokemon = async () => {
       try {
         const response = await axios.get(
-          'https://pokeapi.co/api/v2/pokemon?limit=30&offset=0'
+          'https://pokeapi.co/api/v2/pokemon?limit=40&offset=0',
         );
         const results = response.data.results;
 
@@ -63,7 +72,7 @@ export const PokemonProvider: React.FC<{ children: React.ReactNode }> = ({
                 .map((type: any) => type.type.name)
                 .join(', '),
             };
-          })
+          }),
         );
 
         setPokemonList(detailedPokemon);
@@ -78,7 +87,7 @@ export const PokemonProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const filtered = pokemonList.filter((pokemon) =>
-      pokemon.name.toLowerCase().includes(searchQuery.toLowerCase())
+      pokemon.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
     setFilteredPokemon(filtered);
   }, [searchQuery, pokemonList]);
